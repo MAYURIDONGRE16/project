@@ -61,14 +61,16 @@ export const placeOrderStripe=async(req,res)=>{
             amount,
             address,
             paymentType:"Online",
+
         });
 
         // stripe getway initialize
         const stripeInstance= new stripe(process.env.STRIPE_Secret_key);
 
         // Create line items for stripe
-            const line_items = productData.map((item) => ({
-                price_data: {
+            const line_items = productData.map((item) => {
+                return{
+                    price_data: {
                     currency: "usd",
                     product_data: {
                     name: item.name,
@@ -76,7 +78,8 @@ export const placeOrderStripe=async(req,res)=>{
                     unit_amount: Math.floor(item.price * 1.02 * 100), // apply tax + convert to cents
                 },
                 quantity: item.quantity,
-                }));
+                }
+            })
 
 
         // create session
@@ -104,7 +107,7 @@ export const stripeWebhook=async(request ,response)=>{
     // stripe gateway initialize
      const stripeInstance= new stripe(process.env.STRIPE_Secret_key);
 
-     const sig=request.headers["stripe-signaure"]
+     const sig=request.headers["stripe-signature"];
      let event;
      try {
         event =stripeInstance.webhooks.constructEvent(
@@ -129,6 +132,7 @@ export const stripeWebhook=async(request ,response)=>{
             });
 
             const {orderId,userId}=session.data[0].metadata;
+            
 
             // mark payment as paid
             await Order.findByIdAndUpdate(orderId,{isPaid:true})
@@ -137,7 +141,7 @@ export const stripeWebhook=async(request ,response)=>{
              break;
         }
 
-          case "payment_intent.succeeded":{
+          case "payment_intent.payment_failed":{
 
                 const paymentIntent=event.data.object;
             const paymentIntentId=paymentIntent.id;
